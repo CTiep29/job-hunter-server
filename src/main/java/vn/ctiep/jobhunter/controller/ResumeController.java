@@ -76,8 +76,8 @@ public class ResumeController {
         }
         Resume reqResume = reqResumeOptional.get();
         reqResume.setStatus(resume.getStatus());
-        // create new resume
-        return ResponseEntity.status(HttpStatus.CREATED).body(this.resumeService.update(resume));
+        // update a resume
+        return ResponseEntity.ok().body(this.resumeService.update(reqResume));
     }
 
     @DeleteMapping("/resumes/{id}")

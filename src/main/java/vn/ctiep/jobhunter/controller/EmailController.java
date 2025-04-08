@@ -1,5 +1,7 @@
 package vn.ctiep.jobhunter.controller;
 
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +25,8 @@ public class EmailController {
 
     @GetMapping("/email")
     @ApiMessage("Send simple email")
+//    @Scheduled(cron = "*/55 * * * * *")
+//    @Transactional
     public String sendSimpleEmail() {
 //         this.emailService.sendSimpleEmail();
 //         this.emailService.sendEmailSync("ads.nctpulga29@gmail.com","test send email","<h1><b> Hello </n></h1>", false,true);

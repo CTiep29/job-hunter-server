@@ -54,6 +54,9 @@ public class UserService {
         }
         return null;
     }
+    public User handleChangePassword(User user){
+        return this.userRepository.save(user);
+    }
 
     public ResultPaginationDTO fetchAllUser(Specification<User> spec, Pageable pageable) {
         Page<User> pageUser = this.userRepository.findAll(spec, pageable);

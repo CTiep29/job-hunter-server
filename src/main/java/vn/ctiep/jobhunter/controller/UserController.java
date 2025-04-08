@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.turkraft.springfilter.boot.Filter;
 
 import vn.ctiep.jobhunter.domain.User;
+import vn.ctiep.jobhunter.domain.request.ReqChangePasswordDTO;
 import vn.ctiep.jobhunter.domain.response.ResCreateUserDTO;
 import vn.ctiep.jobhunter.domain.response.ResUpdateUserDTO;
 import vn.ctiep.jobhunter.domain.response.ResUserDTO;
@@ -89,5 +90,19 @@ public class UserController {
             throw new IdInvalidException("User với id = " + user.getId() + " không tồn tại");
         }
         return ResponseEntity.ok().body(this.userService.convertToResUpdateUserDTO(currentUser));
+    }
+    @PostMapping("/users/change-password")
+    @ApiMessage("Thay đổi mật khẩu")
+    public ResponseEntity<?> changePassword(@RequestBody ReqChangePasswordDTO req) throws IdInvalidException{
+        User currentUser = this.userService.fetchUserById(req.getUserId());
+        if (currentUser == null) {
+            throw new IdInvalidException("User với id = " + req.getUserId() + " không tồn tại");
+        }
+        boolean matches = passwordEncoder.matches(req.getOldPassword(), currentUser.getPassword());
+        if (!matches){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Mật khẩu cũ không chính xác");
+        }
+        currentUser.setPassword(passwordEncoder.encode(req.getNewPassword()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(this.userService.handleChangePassword(currentUser));
     }
 }
