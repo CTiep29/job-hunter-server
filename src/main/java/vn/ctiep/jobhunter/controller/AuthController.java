@@ -19,10 +19,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import vn.ctiep.jobhunter.domain.Company;
+import vn.ctiep.jobhunter.domain.Role;
 import vn.ctiep.jobhunter.domain.User;
 import vn.ctiep.jobhunter.domain.request.ReqLoginDTO;
+import vn.ctiep.jobhunter.domain.request.ReqRegisterRecruiterDTO;
 import vn.ctiep.jobhunter.domain.response.ResCreateUserDTO;
 import vn.ctiep.jobhunter.domain.response.ResLoginDTO;
+import vn.ctiep.jobhunter.service.CompanyService;
+import vn.ctiep.jobhunter.service.RoleService;
 import vn.ctiep.jobhunter.service.UserService;
 import vn.ctiep.jobhunter.util.SecurityUtil;
 import vn.ctiep.jobhunter.util.annotation.ApiMessage;
@@ -38,13 +43,17 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     @Value("${ctiep.jwt.refresh-token-validity-in-seconds}")
     private long refreshTokenExpiration;
+    private final CompanyService companyService;
+    private final RoleService roleService;
 
     public AuthController(AuthenticationManagerBuilder authenticationManagerBuilder, SecurityUtil securityUtil,
-            UserService userService, PasswordEncoder passwordEncoder) {
+            UserService userService, PasswordEncoder passwordEncoder, CompanyService companyService,RoleService roleService) {
         this.authenticationManagerBuilder = authenticationManagerBuilder;
         this.securityUtil = securityUtil;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
+        this.companyService = companyService;
+        this.roleService = roleService;
     }
 
     @PostMapping("/auth/login")
@@ -65,7 +74,8 @@ public class AuthController {
                     currentUserDB.getId(),
                     currentUserDB.getEmail(),
                     currentUserDB.getName(),
-                    currentUserDB.getRole());
+                    currentUserDB.getRole(),
+                    currentUserDB.getCompany().getId());
             res.setUser(userLogin);
         }
         // create a token
@@ -102,6 +112,9 @@ public class AuthController {
             userLogin.setEmail(currentUserDB.getEmail());
             userLogin.setName(currentUserDB.getName());
             userLogin.setRole(currentUserDB.getRole());
+            if (currentUserDB.getCompany() != null) {
+                userLogin.setCompany_id(currentUserDB.getCompany().getId()); // Lấy companyId
+            }
             userGetAccount.setUser(userLogin);
         }
         return ResponseEntity.ok().body(userGetAccount);
@@ -131,7 +144,8 @@ public class AuthController {
                     currentUserDB.getId(),
                     currentUserDB.getEmail(),
                     currentUserDB.getName(),
-                    currentUserDB.getRole());
+                    currentUserDB.getRole(),
+                    currentUserDB.getCompany().getId());
             res.setUser(userLogin);
         }
         // create a token
@@ -194,4 +208,39 @@ public class AuthController {
         User ericUser = this.userService.handleCreateUser(postManUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(this.userService.convertToResCreateUserDTO(ericUser));
     }
+    @PostMapping("/auth/register-recruiter")
+    @ApiMessage("Register recruiter with company info")
+    public ResponseEntity<ResCreateUserDTO> registerRecruiter(
+            @Valid @RequestBody ReqRegisterRecruiterDTO dto) throws IdInvalidException {
+
+        if (userService.isEmailExist(dto.getEmail())) {
+            throw new IdInvalidException("Email " + dto.getEmail() + " đã tồn tại.");
+        }
+
+        // Tạo mới company
+        Company company = new Company();
+        company.setName(dto.getCompanyName());
+        company.setAddress(dto.getCompanyAddress());
+        company.setCreatedBy(dto.getEmail());
+        // Không cần description/logo ở đây
+        company = companyService.handleCreateCompany(company);
+
+        // Tạo user
+        User user = new User();
+        user.setName(dto.getName());
+        user.setEmail(dto.getEmail());
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setCompany(company);
+
+        // Gán role HR (id = 2)
+        Role hrRole = roleService.fetchById(2L);
+        if (hrRole == null) {
+            throw new IdInvalidException("Role nhà tuyển dụng không tồn tại.");
+        }
+        user.setRole(hrRole);
+        User savedUser = userService.handleCreateUser(user);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(userService.convertToResCreateUserDTO(savedUser));
+    }
+
 }
