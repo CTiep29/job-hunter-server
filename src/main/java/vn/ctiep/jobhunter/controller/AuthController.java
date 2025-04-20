@@ -70,12 +70,14 @@ public class AuthController {
         ResLoginDTO res = new ResLoginDTO();
         User currentUserDB = this.userService.handleGetUserByUsername(logindDto.getUsername());
         if (currentUserDB != null) {
+            Long companyId = currentUserDB.getCompany() != null ? currentUserDB.getCompany().getId() : null;
             ResLoginDTO.UserLogin userLogin = new ResLoginDTO.UserLogin(
                     currentUserDB.getId(),
                     currentUserDB.getEmail(),
                     currentUserDB.getName(),
                     currentUserDB.getRole(),
-                    currentUserDB.getCompany().getId());
+                    companyId
+            );
             res.setUser(userLogin);
         }
         // create a token
@@ -140,12 +142,14 @@ public class AuthController {
         ResLoginDTO res = new ResLoginDTO();
         User currentUserDB = this.userService.handleGetUserByUsername(email);
         if (currentUserDB != null) {
+            Long companyId = currentUserDB.getCompany() != null ? currentUserDB.getCompany().getId() : null;
             ResLoginDTO.UserLogin userLogin = new ResLoginDTO.UserLogin(
                     currentUserDB.getId(),
                     currentUserDB.getEmail(),
                     currentUserDB.getName(),
                     currentUserDB.getRole(),
-                    currentUserDB.getCompany().getId());
+                    companyId
+            );
             res.setUser(userLogin);
         }
         // create a token
@@ -222,7 +226,7 @@ public class AuthController {
         company.setName(dto.getCompanyName());
         company.setAddress(dto.getCompanyAddress());
         company.setCreatedBy(dto.getEmail());
-        // Không cần description/logo ở đây
+
         company = companyService.handleCreateCompany(company);
 
         // Tạo user

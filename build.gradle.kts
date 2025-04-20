@@ -28,6 +28,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 	implementation("org.thymeleaf.extras:thymeleaf-extras-springsecurity6")
 	implementation("com.turkraft.springfilter:jpa:3.1.7")
+	implementation("com.cloudinary:cloudinary-http44:1.34.0")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0")
 	implementation("com.fasterxml.jackson.core:jackson-databind:2.14.0")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")

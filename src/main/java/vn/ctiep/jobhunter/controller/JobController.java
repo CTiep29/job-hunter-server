@@ -82,4 +82,14 @@ public class JobController {
 
         return ResponseEntity.ok().body(this.jobService.fetchAll(spec, pageable));
     }
+    @GetMapping("/companies/{companyId}/jobs")
+    @ApiMessage("Get jobs by company id for recruiter")
+    public ResponseEntity<ResultPaginationDTO> getJobsByCompanyId(
+            @PathVariable("companyId") long companyId,
+            @Filter Specification<Job> spec,
+            Pageable pageable) {
+
+        return ResponseEntity.ok().body(this.jobService.fetchByCompanyId(companyId, spec, pageable));
+    }
+
 }

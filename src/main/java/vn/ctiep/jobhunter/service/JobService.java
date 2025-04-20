@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -157,4 +158,26 @@ public class JobService {
 
         return rs;
     }
+    public ResultPaginationDTO fetchByCompanyId(long companyId, Specification<Job> spec, Pageable pageable) {
+        Specification<Job> companySpec = (root, query, cb) ->
+                cb.equal(root.get("company").get("id"), companyId);
+
+        Specification<Job> finalSpec = spec == null ? companySpec : spec.and(companySpec);
+
+        Page<Job> pageJob = this.jobRepository.findAll(finalSpec, pageable);
+
+        ResultPaginationDTO rs = new ResultPaginationDTO();
+        ResultPaginationDTO.Meta mt = new ResultPaginationDTO.Meta();
+
+        mt.setPage(pageable.getPageNumber() + 1);
+        mt.setPageSize(pageable.getPageSize());
+
+        mt.setPages(pageJob.getTotalPages());
+        mt.setTotal(pageJob.getTotalElements());
+
+        rs.setMeta(mt);
+        rs.setResult(pageJob.getContent());
+        return rs;
+    }
+
 }
