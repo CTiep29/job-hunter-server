@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.repository.query.Param;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.turkraft.springfilter.builder.FilterBuilder;
@@ -24,6 +26,8 @@ import vn.ctiep.jobhunter.repository.JobRepository;
 import vn.ctiep.jobhunter.repository.ResumeRepository;
 import vn.ctiep.jobhunter.repository.UserRepository;
 import vn.ctiep.jobhunter.util.SecurityUtil;
+import vn.ctiep.jobhunter.util.constant.ResumeStateEnum;
+import vn.ctiep.jobhunter.util.error.IdInvalidException;
 
 import java.util.Optional;
 import java.util.List;
@@ -54,7 +58,7 @@ public class ResumeService {
         return this.resumeRepository.findById(id);
     }
 
-    public boolean checkResumeExistByUserAndJob(Resume resume) {
+    public boolean checkResumeExistByUserAndJob(Resume resume) throws IdInvalidException {
         // check user by id
         if (resume.getUser() == null) {
             return false;
@@ -71,7 +75,15 @@ public class ResumeService {
         if (jobOptional.isEmpty()) {
             return false;
         }
-
+        // Check if the user has already applied for this job
+        boolean alreadyApplied = this.resumeRepository.existsByUserIdAndJobId(
+                resume.getUser().getId(),
+                resume.getJob().getId()
+        );
+        if (alreadyApplied) {
+            // Nếu muốn, có thể throw luôn 1 custom exception
+            throw new IdInvalidException("Ứng viên đã ứng tuyển công việc này rồi, không thể ứng tuyển lần 2.");
+        }
         return true;
     }
 
@@ -167,5 +179,18 @@ public class ResumeService {
         rs.setResult(listResume);
 
         return rs;
+    }
+    // Chạy mỗi 30 phút
+    @Scheduled(cron = "0 */30 * * * *")
+    public void autoDeactivateJobsWhenHiredFull() {
+        List<Job> activeJobs = jobRepository.findByActiveTrue();
+        for (Job job : activeJobs) {
+            long hiredCount = resumeRepository.countByJobIdAndStatus(job.getId(), ResumeStateEnum.HIRED);
+            if (hiredCount >= job.getQuantity()) {
+                job.setActive(false);
+                jobRepository.save(job);
+                System.out.println("[Cronjob] Vô hiệu hóa job ID: " + job.getId() + " do đã tuyển đủ: " + hiredCount + "/" + job.getQuantity());
+            }
+        }
     }
 }

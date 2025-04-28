@@ -1,5 +1,6 @@
 package vn.ctiep.jobhunter.service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -8,17 +9,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
 import vn.ctiep.jobhunter.domain.Company;
 import vn.ctiep.jobhunter.domain.Job;
 import vn.ctiep.jobhunter.domain.Skill;
+import vn.ctiep.jobhunter.domain.User;
+import vn.ctiep.jobhunter.domain.response.ResLoginDTO;
 import vn.ctiep.jobhunter.domain.response.ResultPaginationDTO;
 import vn.ctiep.jobhunter.domain.response.job.ResCreateJobDTO;
 import vn.ctiep.jobhunter.domain.response.job.ResUpdateJobDTO;
 import vn.ctiep.jobhunter.repository.CompanyRepository;
 import vn.ctiep.jobhunter.repository.JobRepository;
 import vn.ctiep.jobhunter.repository.SkillRepository;
+import vn.ctiep.jobhunter.repository.UserRepository;
+import vn.ctiep.jobhunter.util.SecurityUtil;
 
 @Service
 public class JobService {
@@ -26,13 +33,16 @@ public class JobService {
     private final JobRepository jobRepository;
     private final SkillRepository skillRepository;
     private final CompanyRepository companyRepository;
+    private final UserRepository userRepository;
 
     public JobService(JobRepository jobRepository,
             SkillRepository skillRepository,
-            CompanyRepository companyRepository) {
+            CompanyRepository companyRepository,
+            UserRepository userRepository) {
         this.jobRepository = jobRepository;
         this.skillRepository = skillRepository;
         this.companyRepository = companyRepository;
+        this.userRepository = userRepository;
     }
 
     public Optional<Job> fetchJobById(long id) {
@@ -40,6 +50,20 @@ public class JobService {
     }
 
     public ResCreateJobDTO create(Job j) {
+        // gan cong ty
+        Optional<ResLoginDTO.UserInsideToken> optionalUser = SecurityUtil.getCurrentUserInsideToken();
+        if (optionalUser.isPresent()){
+            Long userId = optionalUser.get().getId();
+            Optional<User> userOptional = userRepository.findById(userId);
+            if(userOptional.isPresent()){
+                User currentUser = userOptional.get();
+                Company company = currentUser.getCompany();
+                if (company != null){
+                    j.setCompany(company);
+                }
+            }
+
+        }
         // check skills
         if (j.getSkills() != null) {
             List<Long> reqSkills = j.getSkills()
@@ -48,13 +72,6 @@ public class JobService {
 
             List<Skill> dbSkills = this.skillRepository.findByIdIn(reqSkills);
             j.setSkills(dbSkills);
-        }
-        // check company
-        if (j.getCompany() != null) {
-            Optional<Company> cOptional = this.companyRepository.findById(j.getCompany().getId());
-            if (cOptional.isPresent()) {
-                j.setCompany(cOptional.get());
-            }
         }
         // create job
         Job currentJob = this.jobRepository.save(j);
@@ -93,12 +110,19 @@ public class JobService {
             List<Skill> dbSkills = this.skillRepository.findByIdIn(reqSkills);
             jobInDB.setSkills(dbSkills);
         }
-        // check company
-        if (j.getCompany() != null) {
-            Optional<Company> cOptional = this.companyRepository.findById(j.getCompany().getId());
-            if (cOptional.isPresent()) {
-                jobInDB.setCompany(cOptional.get());
+        // gan cong ty
+        Optional<ResLoginDTO.UserInsideToken> optionalUser = SecurityUtil.getCurrentUserInsideToken();
+        if (optionalUser.isPresent()){
+            Long userId = optionalUser.get().getId();
+            Optional<User> userOptional = userRepository.findById(userId);
+            if(userOptional.isPresent()){
+                User currentUser = userOptional.get();
+                Company company = currentUser.getCompany();
+                if (company != null){
+                    j.setCompany(company);
+                }
             }
+
         }
         // update correct info
         jobInDB.setName(j.getName());
@@ -141,28 +165,35 @@ public class JobService {
     }
 
     public ResultPaginationDTO fetchAll(Specification<Job> spec, Pageable pageable) {
-        Page<Job> pageUser = this.jobRepository.findAll(spec, pageable);
+        // Tạo điều kiện active = true
+        Specification<Job> activeSpec = (root, query, cb) -> cb.equal(root.get("active"), true);
+
+        // Kết hợp với spec truyền vào
+        Specification<Job> finalSpec = spec == null ? activeSpec : spec.and(activeSpec);
+
+        Page<Job> pageUser = this.jobRepository.findAll(finalSpec, pageable);
 
         ResultPaginationDTO rs = new ResultPaginationDTO();
         ResultPaginationDTO.Meta mt = new ResultPaginationDTO.Meta();
 
         mt.setPage(pageable.getPageNumber() + 1);
         mt.setPageSize(pageable.getPageSize());
-
         mt.setPages(pageUser.getTotalPages());
         mt.setTotal(pageUser.getTotalElements());
 
         rs.setMeta(mt);
-
         rs.setResult(pageUser.getContent());
 
         return rs;
     }
     public ResultPaginationDTO fetchByCompanyId(long companyId, Specification<Job> spec, Pageable pageable) {
-        Specification<Job> companySpec = (root, query, cb) ->
-                cb.equal(root.get("company").get("id"), companyId);
+        Specification<Job> companySpec = (root, query, cb) -> cb.equal(root.get("company").get("id"), companyId);
+        Specification<Job> activeSpec = (root, query, cb) -> cb.equal(root.get("active"), true);
 
-        Specification<Job> finalSpec = spec == null ? companySpec : spec.and(companySpec);
+        Specification<Job> finalSpec = companySpec.and(activeSpec);
+        if (spec != null) {
+            finalSpec = finalSpec.and(spec);
+        }
 
         Page<Job> pageJob = this.jobRepository.findAll(finalSpec, pageable);
 
@@ -171,13 +202,26 @@ public class JobService {
 
         mt.setPage(pageable.getPageNumber() + 1);
         mt.setPageSize(pageable.getPageSize());
-
         mt.setPages(pageJob.getTotalPages());
         mt.setTotal(pageJob.getTotalElements());
 
         rs.setMeta(mt);
         rs.setResult(pageJob.getContent());
         return rs;
+    }
+    //Chay moi ngay luc 00:00
+    @Scheduled(cron = "0 0 0 * * ?")
+    @Transactional
+    public void deactivateExpiredJobs() {
+        Instant now = Instant.now();
+        List<Job> expiredJobs = jobRepository.findByEndDateBeforeAndActiveTrue(now);
+
+        for (Job job : expiredJobs) {
+            job.setActive(false);
+        }
+
+        jobRepository.saveAll(expiredJobs);
+        System.out.println("✅ Cronjob đã cập nhật " + expiredJobs.size() + " job hết hạn.");
     }
 
 }

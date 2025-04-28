@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import vn.ctiep.jobhunter.domain.Role;
+import vn.ctiep.jobhunter.util.constant.GenderEnum;
 
 @Getter
 @Setter
@@ -25,6 +26,11 @@ public class ResLoginDTO {
         private String name;
         private Role role;
         private Long company_id;
+        private String avatar;
+        private String cv;
+        private GenderEnum gender;
+        private String address;
+        private Integer age;
     }
 
     @Getter

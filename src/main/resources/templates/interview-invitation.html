@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Thư mời phỏng vấn</title>
+</head>
+<body>
+<p>Chào <b th:text="${name}"></b>,</p>
+<p>Bạn đã được mời tham gia phỏng vấn cho vị trí <b th:text="${jobTitle}"></b> tại công ty <b th:text="${companyName}"></b>.</p>
+<p>Thời gian và địa điểm cụ thể sẽ được công ty thông báo qua email sau khi bạn xác nhận tham gia phỏng vấn!</p>
+<p>Vui lòng xác nhận tham gia phỏng vấn bằng cách nhấn vào liên kết dưới đây:</p>
+<p>
+    <a th:href="${confirmationUrl}" style="background: #1e90ff; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">Xác nhận tham gia</a>
+</p>
+<p>Trân trọng,<br/>JobHunter</p>
+</body>
+</html>

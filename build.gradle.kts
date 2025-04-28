@@ -31,6 +31,7 @@ dependencies {
 	implementation("com.cloudinary:cloudinary-http44:1.34.0")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0")
 	implementation("com.fasterxml.jackson.core:jackson-databind:2.14.0")
+	implementation("org.apache.pdfbox:pdfbox:2.0.29")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")

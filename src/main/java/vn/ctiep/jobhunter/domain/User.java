@@ -43,6 +43,11 @@ public class User {
     @Enumerated(EnumType.STRING)
     private GenderEnum gender;
     private String address;
+    @Column(length = 255)
+    private String avatar;
+
+    @Column(length = 255)
+    private String cv;
 
     @Column(columnDefinition = "MEDIUMTEXT")
     private String refreshToken;

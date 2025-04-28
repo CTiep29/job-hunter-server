@@ -3,10 +3,15 @@ package vn.ctiep.jobhunter.service;
 import com.cloudinary.Cloudinary;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import com.cloudinary.utils.ObjectUtils;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.nio.file.StandardCopyOption;
 
 import java.nio.file.Path;
@@ -39,18 +44,25 @@ public class FileService {
 
         String originalName = file.getOriginalFilename();
         String extension = getFileName(originalName)[1].toLowerCase();
-        String publicId = generatePublicValue(originalName) + "." + extension;
-        File fileToUpload = convert(file);
+        String publicId = generatePublicValue(originalName);
+
+        File fileToUpload;
+
+        if (extension.equals("pdf")) {
+            // Nếu là PDF → convert thành PNG
+            fileToUpload = convertPdfToImage(convert(file));
+        } else {
+            fileToUpload = convert(file);
+        }
 
         Map<String, Object> options = new HashMap<>();
         options.put("public_id", publicId);
-
-        if (extension.equals("pdf") || extension.equals("doc") || extension.equals("docx")) {
-            options.put("resource_type", "auto");
-        }
+        options.put("type", "upload");
+        options.put("resource_type", "image"); // Luôn để image vì convert xong đều là ảnh
 
         Map uploadResult = cloudinary.uploader().upload(fileToUpload, options);
         cleanDisk(fileToUpload);
+
         return (String) uploadResult.get("secure_url");
     }
 
@@ -66,12 +78,25 @@ public class FileService {
         cleanDisk(fileUpload);
         return  cloudinary.url().generate(StringUtils.join(publicValue, ".", extension));
     }
+    private File convertPdfToImage(File pdfFile) throws IOException {
+        PDDocument document = PDDocument.load(pdfFile);
+        PDFRenderer pdfRenderer = new PDFRenderer(document);
 
+        // Render trang đầu tiên của PDF thành ảnh
+        BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 300); // 300 DPI = nét
+
+        File imageFile = File.createTempFile(UUID.randomUUID().toString(), ".png");
+        ImageIO.write(bim, "png", imageFile);
+
+        document.close();
+        return imageFile;
+    }
     private File convert(MultipartFile file) throws IOException {
         assert file.getOriginalFilename() != null;
-        File convFile = new File(StringUtils.join(generatePublicValue(file.getOriginalFilename()), getFileName(file.getOriginalFilename())[1]));
-        try(InputStream is = file.getInputStream()) {
-            Files.copy(is, convFile.toPath());
+        String extension = "." + getFileName(file.getOriginalFilename())[1];
+        File convFile = File.createTempFile(UUID.randomUUID().toString(), extension);
+        try (InputStream is = file.getInputStream()) {
+            Files.copy(is, convFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
         return convFile;
     }

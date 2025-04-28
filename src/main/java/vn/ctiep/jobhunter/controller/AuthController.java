@@ -76,7 +76,12 @@ public class AuthController {
                     currentUserDB.getEmail(),
                     currentUserDB.getName(),
                     currentUserDB.getRole(),
-                    companyId
+                    companyId,
+                    currentUserDB.getAvatar(),
+                    currentUserDB.getCv(),
+                    currentUserDB.getGender(),
+                    currentUserDB.getAddress(),
+                    currentUserDB.getAge()
             );
             res.setUser(userLogin);
         }
@@ -117,10 +122,17 @@ public class AuthController {
             if (currentUserDB.getCompany() != null) {
                 userLogin.setCompany_id(currentUserDB.getCompany().getId()); // Lấy companyId
             }
+            // Gán thêm các thông tin mới:
+            userLogin.setAvatar(currentUserDB.getAvatar());
+            userLogin.setCv(currentUserDB.getCv());
+            userLogin.setGender(currentUserDB.getGender());
+            userLogin.setAge(currentUserDB.getAge());
+            userLogin.setAddress(currentUserDB.getAddress());
             userGetAccount.setUser(userLogin);
         }
         return ResponseEntity.ok().body(userGetAccount);
     }
+
 
     @GetMapping("/auth/refresh")
     @ApiMessage("Get User by refresh token")
@@ -148,7 +160,12 @@ public class AuthController {
                     currentUserDB.getEmail(),
                     currentUserDB.getName(),
                     currentUserDB.getRole(),
-                    companyId
+                    companyId,
+                    currentUserDB.getAvatar(),
+                    currentUserDB.getCv(),
+                    currentUserDB.getGender(),
+                    currentUserDB.getAddress(),
+                    currentUserDB.getAge()
             );
             res.setUser(userLogin);
         }

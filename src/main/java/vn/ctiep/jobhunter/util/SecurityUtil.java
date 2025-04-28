@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -29,7 +30,7 @@ import vn.ctiep.jobhunter.domain.response.ResLoginDTO;
 @Service
 public class SecurityUtil {
     private final JwtEncoder jwtEncoder;
-
+    private static final ObjectMapper objectMapper = new ObjectMapper();
     public SecurityUtil(JwtEncoder jwtEncoder) {
         this.jwtEncoder = jwtEncoder;
     }
@@ -129,7 +130,19 @@ public class SecurityUtil {
         }
         return null;
     }
+    public static Optional<ResLoginDTO.UserInsideToken> getCurrentUserInsideToken() {
+        SecurityContext securityContext = SecurityContextHolder.getContext();
+        Authentication authentication = securityContext.getAuthentication();
 
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            Object userClaim = jwt.getClaims().get("user");
+            ObjectMapper mapper = new ObjectMapper();
+            ResLoginDTO.UserInsideToken user = mapper.convertValue(userClaim, ResLoginDTO.UserInsideToken.class);
+            return Optional.of(user);
+        }
+
+        return Optional.empty();
+    }
     /**
      * Get the JWT of the current user.
      *

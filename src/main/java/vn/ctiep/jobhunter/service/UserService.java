@@ -89,6 +89,8 @@ public class UserService {
             currentUser.setGender(user.getGender());
             currentUser.setAge(user.getAge());
             currentUser.setName(user.getName());
+            currentUser.setAvatar(user.getAvatar());
+            currentUser.setCv(user.getCv());
             // check company
             if (user.getCompany() != null) {
                 Optional<Company> companyOptional = this.companyService.findById(user.getCompany().getId());
@@ -146,6 +148,9 @@ public class UserService {
         res.setUpdatedAt(user.getUpdatedAt());
         res.setGender(user.getGender());
         res.setAddress(user.getAddress());
+        res.setAvatar(user.getAvatar());
+        res.setCv(user.getCv());
+
         return res;
     }
 

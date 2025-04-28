@@ -18,7 +18,8 @@ public class ResUpdateUserDTO {
     private int age;
     private Instant updatedAt;
     private CompanyUser company;
-
+    private String avatar;
+    private String cv;
     @Getter
     @Setter
     public static class CompanyUser {
