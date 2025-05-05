@@ -9,4 +9,5 @@ import java.time.Instant;
 public class ResUpdateResumeDTO {
     private Instant createdAt;
     private String createdBy;
+    private String message;
 }

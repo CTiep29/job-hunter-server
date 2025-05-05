@@ -66,18 +66,18 @@ public class FileService {
         return (String) uploadResult.get("secure_url");
     }
 
-    public String uploadImage(MultipartFile file) throws IOException {
-        assert file.getOriginalFilename() != null;
-        String publicValue = generatePublicValue(file.getOriginalFilename());
-        log.info("publicValue is: {}", publicValue);
-        String extension = getFileName(file.getOriginalFilename())[1];
-        log.info("extension is: {}", extension);
-        File fileUpload = convert(file);
-        log.info("fileUpload is: {}", fileUpload);
-        cloudinary.uploader().upload(fileUpload, ObjectUtils.asMap("public_id", publicValue));
-        cleanDisk(fileUpload);
-        return  cloudinary.url().generate(StringUtils.join(publicValue, ".", extension));
-    }
+//    public String uploadImage(MultipartFile file) throws IOException {
+//        assert file.getOriginalFilename() != null;
+//        String publicValue = generatePublicValue(file.getOriginalFilename());
+//        log.info("publicValue is: {}", publicValue);
+//        String extension = getFileName(file.getOriginalFilename())[1];
+//        log.info("extension is: {}", extension);
+//        File fileUpload = convert(file);
+//        log.info("fileUpload is: {}", fileUpload);
+//        cloudinary.uploader().upload(fileUpload, ObjectUtils.asMap("public_id", publicValue));
+//        cleanDisk(fileUpload);
+//        return  cloudinary.url().generate(StringUtils.join(publicValue, ".", extension));
+//    }
     private File convertPdfToImage(File pdfFile) throws IOException {
         PDDocument document = PDDocument.load(pdfFile);
         PDFRenderer pdfRenderer = new PDFRenderer(document);

@@ -82,7 +82,7 @@ public class ResumeService {
         );
         if (alreadyApplied) {
             // Nếu muốn, có thể throw luôn 1 custom exception
-            throw new IdInvalidException("Ứng viên đã ứng tuyển công việc này rồi, không thể ứng tuyển lần 2.");
+            throw new IdInvalidException("Ứng viên đã ứng tuyển công việc này rồi.");
         }
         return true;
     }
@@ -180,6 +180,7 @@ public class ResumeService {
 
         return rs;
     }
+
     // Chạy mỗi 30 phút
     @Scheduled(cron = "0 */30 * * * *")
     public void autoDeactivateJobsWhenHiredFull() {

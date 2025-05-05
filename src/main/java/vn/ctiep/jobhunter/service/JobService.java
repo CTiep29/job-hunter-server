@@ -165,13 +165,8 @@ public class JobService {
     }
 
     public ResultPaginationDTO fetchAll(Specification<Job> spec, Pageable pageable) {
-        // Tạo điều kiện active = true
-        Specification<Job> activeSpec = (root, query, cb) -> cb.equal(root.get("active"), true);
 
-        // Kết hợp với spec truyền vào
-        Specification<Job> finalSpec = spec == null ? activeSpec : spec.and(activeSpec);
-
-        Page<Job> pageUser = this.jobRepository.findAll(finalSpec, pageable);
+        Page<Job> pageUser = this.jobRepository.findAll(spec, pageable);
 
         ResultPaginationDTO rs = new ResultPaginationDTO();
         ResultPaginationDTO.Meta mt = new ResultPaginationDTO.Meta();
@@ -186,11 +181,11 @@ public class JobService {
 
         return rs;
     }
+
     public ResultPaginationDTO fetchByCompanyId(long companyId, Specification<Job> spec, Pageable pageable) {
         Specification<Job> companySpec = (root, query, cb) -> cb.equal(root.get("company").get("id"), companyId);
-        Specification<Job> activeSpec = (root, query, cb) -> cb.equal(root.get("active"), true);
 
-        Specification<Job> finalSpec = companySpec.and(activeSpec);
+        Specification<Job> finalSpec = companySpec;
         if (spec != null) {
             finalSpec = finalSpec.and(spec);
         }

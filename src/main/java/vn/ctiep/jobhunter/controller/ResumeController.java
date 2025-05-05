@@ -10,12 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import com.turkraft.springfilter.boot.Filter;
 import com.turkraft.springfilter.builder.FilterBuilder;
 import com.turkraft.springfilter.converter.FilterSpecificationConverter;
@@ -36,9 +31,6 @@ import vn.ctiep.jobhunter.util.SecurityUtil;
 import vn.ctiep.jobhunter.util.annotation.ApiMessage;
 import vn.ctiep.jobhunter.util.constant.ResumeStateEnum;
 import vn.ctiep.jobhunter.util.error.IdInvalidException;
-
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 @RequestMapping("api/v1")
@@ -87,7 +79,11 @@ public class ResumeController {
             throw new IdInvalidException("Resume với id =" + resume.getId() + " không tồn tại");
         }
         if (resume.getStatus() == ResumeStateEnum.HIRED) {
-
+            if (resume.getJob() == null) {
+                // Nếu job null thì lấy lại từ database
+                Resume reqResume = reqResumeOptional.get();
+                resume.setJob(reqResume.getJob());
+            }
             long hiredCount = resumeRepository.countByJobIdAndStatus(resume.getJob().getId(), ResumeStateEnum.HIRED);
             int jobQuantity = resume.getJob().getQuantity();
             if (hiredCount >= jobQuantity) {
@@ -114,8 +110,26 @@ public class ResumeController {
                     reqResume.getJob().getCompany().getName()
             );
         }
+
         // update a resume
-        return ResponseEntity.ok().body(this.resumeService.update(reqResume));
+        ResUpdateResumeDTO updated = this.resumeService.update(reqResume);
+
+        boolean isLastHire = false;
+        if (resume.getStatus() == ResumeStateEnum.HIRED) {
+            long hiredCountAfter = resumeRepository.countByJobIdAndStatus(resume.getJob().getId(), ResumeStateEnum.HIRED);
+            int jobQuantity = resume.getJob().getQuantity();
+            if (hiredCountAfter == jobQuantity) {
+                isLastHire = true;
+            }
+        }
+
+        ResUpdateResumeDTO res = new ResUpdateResumeDTO();
+        res.setCreatedAt(updated.getCreatedAt());
+        res.setCreatedBy(updated.getCreatedBy());
+        res.setMessage(isLastHire ? "Đã tuyển đủ số lượng ứng viên cho công việc này." : null);
+
+        return ResponseEntity.ok(res);
+
     }
 
     @DeleteMapping("/resumes/{id}")
@@ -189,10 +203,7 @@ public class ResumeController {
             companySpec = userInSpec;
 
         }
-
         Specification<Resume> finalSpec = Specification.where(companySpec).and(spec);
-
-        log.info("[FETCH-RESUMES] Final Specification built: {}", finalSpec);
 
         return ResponseEntity.ok().body(this.resumeService.fetchAllResume(finalSpec, pageable));
     }
@@ -203,6 +214,8 @@ public class ResumeController {
 
         return ResponseEntity.ok().body(this.resumeService.fetchResumeByUser(pageable));
     }
+
+
     @PutMapping("/resumes/{id}/confirm")
     @ApiMessage("Xác nhận tham gia phỏng vấn")
     public ResponseEntity<ResUpdateResumeDTO> confirmInterview(@PathVariable("id") long id) throws IdInvalidException {
