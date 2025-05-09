@@ -2,11 +2,7 @@ package vn.ctiep.jobhunter.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import vn.ctiep.jobhunter.domain.Subscriber;
@@ -54,6 +50,16 @@ public class SubscriberController {
                 : "";
 
         return ResponseEntity.status(HttpStatus.CREATED).body(this.subscriberService.findByEmail(email));
+    }
+    @DeleteMapping("/subscribers/{id}")
+    @ApiMessage("Delete a subscriber")
+    public ResponseEntity<?> delete(@PathVariable("id") long id) throws IdInvalidException {
+        Subscriber subs = this.subscriberService.findById(id);
+        if (subs == null) {
+            throw new IdInvalidException("Id " + id + " không tồn tại");
+        }
+        this.subscriberService.delete(id);
+        return ResponseEntity.ok().build();
     }
 
 }

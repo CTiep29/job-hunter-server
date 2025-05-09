@@ -1,5 +1,6 @@
 package vn.ctiep.jobhunter.controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,13 +26,12 @@ public class EmailController {
 
     @GetMapping("/email")
     @ApiMessage("Send simple email")
-//    @Scheduled(cron = "*/55 * * * * *")
-//    @Transactional
-    public String sendSimpleEmail() {
-//         this.emailService.sendSimpleEmail();
-//         this.emailService.sendEmailSync("ads.nctpulga29@gmail.com","test send email","<h1><b> Hello </n></h1>", false,true);
-        //this.emailService.sendEmailFromTemplateSync("ads.nctpulga29@gmail.com","test send email","job", "Cong Tiep", this.);
-        this.subscriberService.sendSubscribersEmailJobs();
-        return "ok";
+    @Scheduled(cron = "0 46 23 * * *") // gửi lúc 23h hàng ngày
+    @Transactional
+    public ResponseEntity<?> sendSimpleEmail() {
+        int sentCount = this.subscriberService.sendSubscribersEmailJobs();
+        System.out.println("Run cronjob send email ....");
+        return ResponseEntity.ok(sentCount);
     }
+
 }

@@ -13,7 +13,7 @@ import vn.ctiep.jobhunter.domain.Skill;
 public interface JobRepository extends JpaRepository<Job, Long>,
                 JpaSpecificationExecutor<Job> {
 
-        List<Job> findBySkillsIn(List<Skill> skills);
+        List<Job> findBySkillsInAndActiveTrue(List<Skill> skills);
         List<Job> findByActiveTrue();
         List<Job> findByEndDateBeforeAndActiveTrue(Instant now);
 

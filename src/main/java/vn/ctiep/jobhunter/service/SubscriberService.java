@@ -1,13 +1,13 @@
 package vn.ctiep.jobhunter.service;
 
-import java.io.File;
-import java.util.List;
-import java.util.Optional;
+import java.time.Duration;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import org.springframework.scheduling.annotation.Scheduled;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import vn.ctiep.jobhunter.domain.Job;
 import vn.ctiep.jobhunter.domain.Skill;
 import vn.ctiep.jobhunter.domain.Subscriber;
@@ -18,7 +18,7 @@ import vn.ctiep.jobhunter.repository.SubscriberRepository;
 
 @Service
 public class SubscriberService {
-
+    private final RedisTemplate<String, Object> redisTemplate;
     private final SubscriberRepository subscriberRepository;
     private final SkillRepository skillRepository;
     private final JobRepository jobRepository;
@@ -28,17 +28,14 @@ public class SubscriberService {
             SubscriberRepository subscriberRepository,
             SkillRepository skillRepository,
             JobRepository jobRepository,
-            EmailService emailService) {
+            EmailService emailService,
+            RedisTemplate<String, Object> redisTemplate) {
         this.subscriberRepository = subscriberRepository;
         this.skillRepository = skillRepository;
         this.jobRepository = jobRepository;
         this.emailService = emailService;
+        this.redisTemplate = redisTemplate;
     }
-
-//    @Scheduled(cron = "*/55 * * * * *")
-//    public void testCron() {
-//        System.out.println(">>> Test CRON");
-//    }
 
     public boolean isExistsByEmail(String email) {
         return this.subscriberRepository.existsByEmail(email);
@@ -77,6 +74,22 @@ public class SubscriberService {
             return subsOptional.get();
         return null;
     }
+    @Transactional
+    public void delete(Long id) {
+        Optional<Subscriber> subscriberOptional = this.subscriberRepository.findById(id);
+        if (subscriberOptional.isPresent()) {
+            Subscriber subscriber = subscriberOptional.get();
+
+            // Xóa mối liên hệ giữa subscriber và skill (bảng subscriber_skill)
+            subscriber.getSkills().forEach(skill -> skill.getSubscribers().remove(subscriber));
+            subscriber.getSkills().clear();
+
+            // Xóa subscriber
+            this.subscriberRepository.delete(subscriber);
+        } else {
+            throw new EntityNotFoundException("Không tìm thấy subscriber với id = " + id);
+        }
+    }
 
     public ResEmailJob convertJobToSendEmail(Job job) {
         ResEmailJob res = new ResEmailJob();
@@ -90,29 +103,63 @@ public class SubscriberService {
         return res;
     }
 
-    public void sendSubscribersEmailJobs() {
+    @SuppressWarnings("unchecked")
+    private List<Job> filterNewJobs(String email, List<Job> jobs) {
+        String redisKey = "sent_jobs:" + email;
+
+        Set<Long> cache = (Set<Long>) redisTemplate.opsForValue().get(redisKey);
+        Set<Long> sentJobIds = (cache != null) ? cache : new HashSet<>();
+
+        return jobs.stream()
+                .filter(job -> !sentJobIds.contains(job.getId()))
+                .toList();
+    }
+
+    @SuppressWarnings("unchecked")
+        private void markJobsAsSent(String email, List<Job> jobs) {
+            String redisKey = "sent_jobs:" + email;
+
+            Set<Long> sentJobIds = (Set<Long>) redisTemplate.opsForValue().get(redisKey);
+            if (sentJobIds == null) {
+                sentJobIds = new HashSet<>();
+            }
+
+            for (Job job : jobs) {
+                sentJobIds.add(job.getId());
+            }
+
+            redisTemplate.opsForValue().set(redisKey, sentJobIds, Duration.ofDays(30));
+        }
+
+    public int sendSubscribersEmailJobs() {
+        int sent = 0;
         List<Subscriber> listSubs = this.subscriberRepository.findAll();
-        if (listSubs != null && listSubs.size() > 0) {
-            for (Subscriber sub : listSubs) {
-                List<Skill> listSkills = sub.getSkills();
-                if (listSkills != null && listSkills.size() > 0) {
-                    List<Job> listJobs = this.jobRepository.findBySkillsIn(listSkills);
-                    if (listJobs != null && listJobs.size() > 0) {
+        for (Subscriber sub : listSubs) {
+            List<Skill> listSkills = sub.getSkills();
+            if (listSkills == null || listSkills.isEmpty()) continue;
 
-                         List<ResEmailJob> arr = listJobs.stream().map(
-                         job -> this.convertJobToSendEmail(job)).collect(Collectors.toList());
+            List<Job> matchedJobs = this.jobRepository.findBySkillsInAndActiveTrue(listSkills);
+            List<Job> newJobs = filterNewJobs(sub.getEmail(), matchedJobs);
 
-                        this.emailService.sendEmailFromTemplateSync(
-                                sub.getEmail(),
-                                "Cơ hội việc làm hot đang chờ đón bạn, khám phá ngay",
-                                "job",
-                                sub.getName(),
-                                arr);
-                    }
-                }
+            if (!newJobs.isEmpty()) {
+                List<ResEmailJob> arr = newJobs.stream()
+                        .map(this::convertJobToSendEmail)
+                        .collect(Collectors.toList());
+
+                this.emailService.sendEmailFromTemplateSync(
+                        sub.getEmail(),
+                        "Cơ hội việc làm hot đang chờ đón bạn, khám phá ngay",
+                        "job",
+                        sub.getName(),
+                        arr);
+
+                markJobsAsSent(sub.getEmail(), newJobs);
+                sent++;
             }
         }
+        return sent;
     }
+
 
 
     public Subscriber findByEmail(String email) {
