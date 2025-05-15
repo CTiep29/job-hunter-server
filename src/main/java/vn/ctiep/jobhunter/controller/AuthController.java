@@ -22,6 +22,7 @@ import jakarta.validation.Valid;
 import vn.ctiep.jobhunter.domain.Company;
 import vn.ctiep.jobhunter.domain.Role;
 import vn.ctiep.jobhunter.domain.User;
+import vn.ctiep.jobhunter.domain.request.GoogleOAuth2DTO;
 import vn.ctiep.jobhunter.domain.request.ReqLoginDTO;
 import vn.ctiep.jobhunter.domain.request.ReqRegisterRecruiterDTO;
 import vn.ctiep.jobhunter.domain.response.ResCreateUserDTO;
@@ -32,6 +33,16 @@ import vn.ctiep.jobhunter.service.UserService;
 import vn.ctiep.jobhunter.util.SecurityUtil;
 import vn.ctiep.jobhunter.util.annotation.ApiMessage;
 import vn.ctiep.jobhunter.util.error.IdInvalidException;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.jackson2.JacksonFactory;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
+import java.util.Map;
 
 @RestController
 @RequestMapping("api/v1")
@@ -262,6 +273,79 @@ public class AuthController {
         User savedUser = userService.handleCreateUser(user);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(userService.convertToResCreateUserDTO(savedUser));
+    }
+    @PostMapping("/auth/oauth2-login")
+    @ApiMessage("Login with Google OAuth2")
+    public ResponseEntity<ResLoginDTO> loginWithGoogle(@RequestBody Map<String, String> body)
+            throws GeneralSecurityException, IOException, IdInvalidException {
+
+        String idTokenString = body.get("credential");
+        if (idTokenString == null || idTokenString.isEmpty()) {
+            throw new IdInvalidException("ID Token không được để trống");
+        }
+
+        GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), JacksonFactory.getDefaultInstance())
+                .setAudience(Collections.singletonList("323789704789-fvlghj1e9ajvrt8n1gpv5gpmf77k36a4.apps.googleusercontent.com"))
+                .build();
+
+        GoogleIdToken idToken = verifier.verify(idTokenString);
+        if (idToken == null) {
+            throw new IdInvalidException("ID Token không hợp lệ");
+        }
+
+        Payload payload = idToken.getPayload();
+        String email = payload.getEmail();
+        boolean emailVerified = Boolean.TRUE.equals(payload.getEmailVerified());
+        String name = (String) payload.get("name");
+        String picture = (String) payload.get("picture");
+
+        if (!emailVerified) {
+            throw new IdInvalidException("Email chưa được xác minh bởi Google");
+        }
+
+        User user = userService.handleGetUserByUsername(email);
+        if (user == null) {
+            user = new User();
+            user.setEmail(email);
+            user.setName(name);
+            user.setAvatar(picture);
+            user.setPassword(passwordEncoder.encode("123456"));
+            user = userService.handleCreateUser(user);
+        }
+
+        Long companyId = user.getCompany() != null ? user.getCompany().getId() : null;
+        ResLoginDTO.UserLogin userLogin = new ResLoginDTO.UserLogin(
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getRole(),
+                companyId,
+                user.getAvatar(),
+                user.getCv(),
+                user.getGender(),
+                user.getAddress(),
+                user.getAge()
+        );
+
+        ResLoginDTO res = new ResLoginDTO();
+        res.setUser(userLogin);
+
+        String accessToken = securityUtil.createAccessToken(user.getEmail(), res);
+        String refreshToken = securityUtil.createRefreshToken(user.getEmail(), res);
+        userService.updateUserToken(refreshToken, user.getEmail());
+
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(refreshTokenExpiration)
+                .build();
+
+        res.setAccessToken(accessToken);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(res);
     }
 
 }
