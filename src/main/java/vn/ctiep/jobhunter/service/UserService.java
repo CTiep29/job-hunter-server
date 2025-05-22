@@ -6,12 +6,15 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import vn.ctiep.jobhunter.domain.Company;
+import vn.ctiep.jobhunter.domain.Resume;
 import vn.ctiep.jobhunter.domain.Role;
 import vn.ctiep.jobhunter.domain.User;
 import vn.ctiep.jobhunter.domain.response.ResCreateUserDTO;
 import vn.ctiep.jobhunter.domain.response.ResUpdateUserDTO;
 import vn.ctiep.jobhunter.domain.response.ResUserDTO;
 import vn.ctiep.jobhunter.domain.response.ResultPaginationDTO;
+import vn.ctiep.jobhunter.repository.CompanyRepository;
+import vn.ctiep.jobhunter.repository.ResumeRepository;
 import vn.ctiep.jobhunter.repository.UserRepository;
 
 import java.util.*;
@@ -22,11 +25,15 @@ public class UserService {
     private final UserRepository userRepository;
     private final CompanyService companyService;
     private final RoleService roleService;
+    private final ResumeRepository resumeRepository;
+    private final CompanyRepository companyRepository;
 
-    public UserService(UserRepository userRepository, CompanyService companyService, RoleService roleService) {
+    public UserService(UserRepository userRepository, CompanyService companyService, RoleService roleService, ResumeRepository resumeRepository, CompanyRepository companyRepository) {
         this.userRepository = userRepository;
         this.companyService = companyService;
         this.roleService = roleService;
+        this.resumeRepository = resumeRepository;
+        this.companyRepository = companyRepository;
     }
 
     public User handleCreateUser(User user) {
@@ -44,7 +51,35 @@ public class UserService {
     }
 
     public void handleDeleteUser(long id) {
-        this.userRepository.deleteById(id);
+        User user = this.fetchUserById(id);
+        if (user != null) {
+            // 1. Xóa mềm User
+            user.setActive(false);
+            
+            // 2. Xóa mềm tất cả Resume của user
+            if (user.getResumes() != null) {
+                for (Resume resume : user.getResumes()) {
+                    resume.setActive(false);
+                    resumeRepository.save(resume);
+                }
+            }
+            
+            // 3. Nếu user là HR của company (role_id = 2), cần xử lý company
+            if (user.getCompany() != null && user.getRole() != null && user.getRole().getId() == 2) {
+                Company company = user.getCompany();
+                // Kiểm tra xem còn HR nào khác trong company không
+                List<User> otherHRs = userRepository.findByCompanyAndActiveTrue(company);
+                otherHRs.remove(user); // Loại bỏ user hiện tại khỏi danh sách
+                
+                // Nếu không còn HR nào khác, xóa mềm company
+                if (otherHRs.isEmpty()) {
+                    company.setActive(false);
+                    companyRepository.save(company);
+                }
+            }
+            
+            this.userRepository.save(user);
+        }
     }
 
     public User fetchUserById(long id) {
@@ -86,7 +121,9 @@ public class UserService {
         User currentUser = this.fetchUserById(user.getId());
         if (currentUser != null) {
             currentUser.setAddress(user.getAddress());
-            currentUser.setGender(user.getGender());
+            if (user.getGender() != null) {
+                currentUser.setGender(user.getGender());
+            }
             currentUser.setAge(user.getAge());
             currentUser.setName(user.getName());
             currentUser.setAvatar(user.getAvatar());
@@ -168,6 +205,7 @@ public class UserService {
             roleUser.setName(user.getRole().getName());
             res.setRole(roleUser);
         }
+        res.setActive(user.isActive());
         res.setId(user.getId());
         res.setEmail(user.getEmail());
         res.setName(user.getName());
@@ -189,5 +227,38 @@ public class UserService {
 
     public User getUserByRefreshTokenAndEmail(String token, String email) {
         return this.userRepository.findByRefreshTokenAndEmail(token, email);
+    }
+
+    public User restoreUser(long id) {
+        Optional<User> userOptional = this.userRepository.findByIdAndActiveFalse(id);
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            
+            // 1. Khôi phục tất cả Resume của user
+            if (user.getResumes() != null) {
+                for (Resume resume : user.getResumes()) {
+                    resume.setActive(true);
+                    resumeRepository.save(resume);
+                }
+            }
+            
+            // 2. Nếu user là HR của company (role_id = 2), cần xử lý company
+            if (user.getCompany() != null && user.getRole() != null && user.getRole().getId() == 2) {
+                Company company = user.getCompany();
+                // Kiểm tra xem còn HR nào khác trong company không
+                List<User> otherHRs = userRepository.findByCompanyAndActiveTrue(company);
+                
+                // Nếu không còn HR nào khác và company đang bị xóa mềm, khôi phục company
+                if (otherHRs.isEmpty() && !company.isActive()) {
+                    company.setActive(true);
+                    companyRepository.save(company);
+                }
+            }
+            
+            // 3. Khôi phục user
+            user.setActive(true);
+            return this.userRepository.save(user);
+        }
+        return null;
     }
 }

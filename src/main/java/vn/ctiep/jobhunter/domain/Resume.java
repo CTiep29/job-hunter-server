@@ -42,6 +42,7 @@ public class Resume {
 
     private String createdBy;
     private String updatedBy;
+    private boolean active = true;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
@@ -58,6 +59,7 @@ public class Resume {
                 : "";
 
         this.createdAt = Instant.now();
+        this.active = true;
     }
 
     @PreUpdate

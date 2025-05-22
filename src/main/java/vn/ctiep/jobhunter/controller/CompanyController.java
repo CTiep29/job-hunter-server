@@ -64,4 +64,13 @@ public class CompanyController {
         Optional<Company> cOptional = this.companyService.findById(id);
         return ResponseEntity.status(HttpStatus.OK).body(cOptional.get());
     }
+
+    @PutMapping("/companies/{id}/restore")
+    public ResponseEntity<Company> restoreCompany(@PathVariable long id) {
+        Company restoredCompany = this.companyService.restoreCompany(id);
+        if (restoredCompany != null) {
+            return ResponseEntity.ok(restoredCompany);
+        }
+        return ResponseEntity.notFound().build();
+    }
 }

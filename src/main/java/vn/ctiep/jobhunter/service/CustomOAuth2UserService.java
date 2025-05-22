@@ -11,6 +11,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import vn.ctiep.jobhunter.domain.User;
 import vn.ctiep.jobhunter.repository.UserRepository;
+import vn.ctiep.jobhunter.util.constant.GenderEnum;
 
 import java.util.Collections;
 import java.util.Map;
@@ -41,6 +42,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
             user.setEmail(email);
             user.setName(name);
             user.setAvatar(picture);
+            user.setGender(GenderEnum.MALE);
             user = userRepository.save(user);
         }
 

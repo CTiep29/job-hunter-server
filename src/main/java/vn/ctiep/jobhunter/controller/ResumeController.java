@@ -78,12 +78,14 @@ public class ResumeController {
         if (reqResumeOptional.isEmpty()) {
             throw new IdInvalidException("Resume với id =" + resume.getId() + " không tồn tại");
         }
+        //Kiem tra neu trang thai la HiRED
         if (resume.getStatus() == ResumeStateEnum.HIRED) {
             if (resume.getJob() == null) {
                 // Nếu job null thì lấy lại từ database
                 Resume reqResume = reqResumeOptional.get();
                 resume.setJob(reqResume.getJob());
             }
+            //Kiem tra so luong
             long hiredCount = resumeRepository.countByJobIdAndStatus(resume.getJob().getId(), ResumeStateEnum.HIRED);
             int jobQuantity = resume.getJob().getQuantity();
             if (hiredCount >= jobQuantity) {
@@ -114,6 +116,7 @@ public class ResumeController {
         // update a resume
         ResUpdateResumeDTO updated = this.resumeService.update(reqResume);
 
+        //Kiem tra xem có phải là người cuối tuyển không
         boolean isLastHire = false;
         if (resume.getStatus() == ResumeStateEnum.HIRED) {
             long hiredCountAfter = resumeRepository.countByJobIdAndStatus(resume.getJob().getId(), ResumeStateEnum.HIRED);
@@ -122,7 +125,6 @@ public class ResumeController {
                 isLastHire = true;
             }
         }
-
         ResUpdateResumeDTO res = new ResUpdateResumeDTO();
         res.setCreatedAt(updated.getCreatedAt());
         res.setCreatedBy(updated.getCreatedBy());

@@ -7,9 +7,11 @@ import org.springframework.stereotype.Service;
 
 import vn.ctiep.jobhunter.domain.Company;
 import vn.ctiep.jobhunter.domain.User;
+import vn.ctiep.jobhunter.domain.Job;
 import vn.ctiep.jobhunter.domain.response.ResultPaginationDTO;
 import vn.ctiep.jobhunter.repository.CompanyRepository;
 import vn.ctiep.jobhunter.repository.UserRepository;
+import vn.ctiep.jobhunter.repository.JobRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,10 +20,12 @@ import java.util.Optional;
 public class CompanyService {
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
+    private final JobRepository jobRepository;
 
-    public CompanyService(CompanyRepository companyRepository, UserRepository userRepository) {
+    public CompanyService(CompanyRepository companyRepository, UserRepository userRepository, JobRepository jobRepository) {
         this.companyRepository = companyRepository;
         this.userRepository = userRepository;
+        this.jobRepository = jobRepository;
     }
 
     public Company handleCreateCompany(Company c) {
@@ -61,14 +65,56 @@ public class CompanyService {
         Optional<Company> comOptional = this.companyRepository.findById(id);
         if (comOptional.isPresent()) {
             Company com = comOptional.get();
-            // fetch all user belong to this company
+            
+            // 1. Xóa mềm tất cả Jobs của company
+            if (com.getJobs() != null) {
+                for (Job job : com.getJobs()) {
+                    job.setActive(false);
+                    jobRepository.save(job);
+                }
+            }
+            
+            // 2. Xóa mềm tất cả Users của company
             List<User> users = this.userRepository.findByCompany(com);
-            this.userRepository.deleteAll(users);
+            for (User user : users) {
+                user.setActive(false);
+                this.userRepository.save(user);
+            }
+            
+            // 3. Xóa mềm company
+            com.setActive(false);
+            this.companyRepository.save(com);
         }
-        this.companyRepository.deleteById(id);
     }
 
     public Optional<Company> findById(long id) {
         return this.companyRepository.findById(id);
+    }
+
+    public Company restoreCompany(long id) {
+        Optional<Company> companyOptional = this.companyRepository.findByIdAndActiveFalse(id);
+        if (companyOptional.isPresent()) {
+            Company company = companyOptional.get();
+            
+            // 1. Khôi phục tất cả Jobs của company
+            if (company.getJobs() != null) {
+                for (Job job : company.getJobs()) {
+                    job.setActive(true);
+                    jobRepository.save(job);
+                }
+            }
+            
+            // 2. Khôi phục tất cả Users của company
+            List<User> users = this.userRepository.findByCompany(company);
+            for (User user : users) {
+                user.setActive(true);
+                this.userRepository.save(user);
+            }
+            
+            // 3. Khôi phục company
+            company.setActive(true);
+            return this.companyRepository.save(company);
+        }
+        return null;
     }
 }

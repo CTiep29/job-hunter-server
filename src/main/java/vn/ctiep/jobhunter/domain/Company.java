@@ -48,6 +48,8 @@ public class Company {
 
     private String updatedBy;
 
+    private boolean active = true;
+
     @OneToMany(mappedBy = "company", fetch = FetchType.LAZY)
     @JsonIgnore
     List<User> users;
@@ -63,6 +65,7 @@ public class Company {
                 : "";
 
         this.createdAt = Instant.now();
+        this.active = true;
     }
 
     @PreUpdate

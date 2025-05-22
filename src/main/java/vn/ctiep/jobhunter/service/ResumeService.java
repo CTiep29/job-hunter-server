@@ -109,7 +109,12 @@ public class ResumeService {
     }
 
     public void delete(long id) {
-        this.resumeRepository.deleteById(id);
+        Optional<Resume> resumeOptional = this.resumeRepository.findById(id);
+        if (resumeOptional.isPresent()) {
+            Resume resume = resumeOptional.get();
+            resume.setActive(false);
+            this.resumeRepository.save(resume);
+        }
     }
 
     public ResFetchResumeDTO getResume(Resume resume) {
@@ -132,7 +137,11 @@ public class ResumeService {
     }
 
     public ResultPaginationDTO fetchAllResume(Specification<Resume> spec, Pageable pageable) {
-        Page<Resume> pageUser = this.resumeRepository.findAll(spec, pageable);
+        // Thêm điều kiện chỉ lấy các resume active
+        Specification<Resume> activeSpec = (root, query, cb) -> cb.equal(root.get("active"), true);
+        Specification<Resume> finalSpec = Specification.where(activeSpec).and(spec);
+        
+        Page<Resume> pageUser = this.resumeRepository.findAll(finalSpec, pageable);
         ResultPaginationDTO rs = new ResultPaginationDTO();
         ResultPaginationDTO.Meta mt = new ResultPaginationDTO.Meta();
 
@@ -157,7 +166,7 @@ public class ResumeService {
         // query builder
         String email = SecurityUtil.getCurrentUserLogin().isPresent() == true ? SecurityUtil.getCurrentUserLogin().get()
                 : "";
-        FilterNode node = filterParser.parse("email='" + email + "'");
+        FilterNode node = filterParser.parse("email='" + email + "' and active=true");
         FilterSpecification<Resume> spec = filterSpecificationConverter.convert(node);
         Page<Resume> pageResume = this.resumeRepository.findAll(spec, pageable);
 
@@ -194,4 +203,5 @@ public class ResumeService {
             }
         }
     }
+
 }

@@ -55,6 +55,7 @@ public class User {
     private Instant updatedAt;
     private String createdBy;
     private String updatedBy;
+    private boolean active = true;
 
     @ManyToOne
     @JoinColumn(name = "company_id")
@@ -75,6 +76,7 @@ public class User {
                 : "";
 
         this.createdAt = Instant.now();
+        this.active = true;
     }
 
     @PreUpdate

@@ -26,6 +26,9 @@ import vn.ctiep.jobhunter.repository.JobRepository;
 import vn.ctiep.jobhunter.repository.SkillRepository;
 import vn.ctiep.jobhunter.repository.UserRepository;
 import vn.ctiep.jobhunter.util.SecurityUtil;
+import vn.ctiep.jobhunter.domain.Resume;
+import vn.ctiep.jobhunter.repository.ResumeRepository;
+import vn.ctiep.jobhunter.util.constant.ResumeStateEnum;
 
 @Service
 public class JobService {
@@ -34,15 +37,18 @@ public class JobService {
     private final SkillRepository skillRepository;
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
+    private final ResumeRepository resumeRepository;
 
     public JobService(JobRepository jobRepository,
             SkillRepository skillRepository,
             CompanyRepository companyRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            ResumeRepository resumeRepository) {
         this.jobRepository = jobRepository;
         this.skillRepository = skillRepository;
         this.companyRepository = companyRepository;
         this.userRepository = userRepository;
+        this.resumeRepository = resumeRepository;
     }
 
     public Optional<Job> fetchJobById(long id) {
@@ -62,7 +68,6 @@ public class JobService {
                     j.setCompany(company);
                 }
             }
-
         }
         // check skills
         if (j.getSkills() != null) {
@@ -122,7 +127,6 @@ public class JobService {
                     j.setCompany(company);
                 }
             }
-
         }
         // update correct info
         jobInDB.setName(j.getName());
@@ -160,8 +164,22 @@ public class JobService {
         return dto;
     }
 
-    public void delete(long id) {
-        this.jobRepository.deleteById(id);
+    public void handleDeleteJob(long id) {
+        Optional<Job> jobOptional = this.jobRepository.findById(id);
+        if (jobOptional.isPresent()) {
+            Job job = jobOptional.get();
+            
+            // 1. Xóa mềm Job
+            job.setActive(false);
+            this.jobRepository.save(job);
+            
+            // 2. Xóa mềm tất cả Resume liên quan
+            List<Resume> relatedResumes = resumeRepository.findByJobIdAndActiveTrue(job.getId());
+            for (Resume resume : relatedResumes) {
+                resume.setActive(false);
+                resumeRepository.save(resume);
+            }
+        }
     }
 
     public ResultPaginationDTO fetchAll(Specification<Job> spec, Pageable pageable) {

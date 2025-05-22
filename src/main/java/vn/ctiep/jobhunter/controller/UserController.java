@@ -105,4 +105,13 @@ public class UserController {
         currentUser.setPassword(passwordEncoder.encode(req.getNewPassword()));
         return ResponseEntity.status(HttpStatus.CREATED).body(this.userService.handleChangePassword(currentUser));
     }
+
+    @PutMapping("/users/{id}/restore")
+    public ResponseEntity<User> restoreUser(@PathVariable long id) {
+        User restoredUser = this.userService.restoreUser(id);
+        if (restoredUser != null) {
+            return ResponseEntity.ok(restoredUser);
+        }
+        return ResponseEntity.notFound().build();
+    }
 }

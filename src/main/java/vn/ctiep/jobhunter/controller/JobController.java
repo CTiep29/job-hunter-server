@@ -52,7 +52,7 @@ public class JobController {
         if (!currentJob.isPresent()) {
             throw new IdInvalidException("Job not found");
         }
-        this.jobService.delete(id);
+        this.jobService.handleDeleteJob(id);
         return ResponseEntity.ok().body(null);
     }
 
