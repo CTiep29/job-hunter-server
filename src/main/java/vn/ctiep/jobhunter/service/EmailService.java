@@ -94,4 +94,24 @@ public class EmailService {
         sendEmailSync(to, "Kết quả ứng tuyển", content, false, true);
     }
 
+    public void sendHiredEmail(String to, String name, String jobTitle, String companyName) {
+        Context context = new Context();
+        context.setVariable("name", name);
+        context.setVariable("jobTitle", jobTitle);
+        context.setVariable("companyName", companyName);
+
+        String content = templateEngine.process("hired", context);
+        sendEmailSync(to, "Chúc mừng bạn đã được tuyển dụng", content, false, true);
+    }
+
+    public void sendInterviewFailedEmail(String to, String name, String jobTitle, String companyName) {
+        Context context = new Context();
+        context.setVariable("name", name);
+        context.setVariable("jobTitle", jobTitle);
+        context.setVariable("companyName", companyName);
+
+        String content = templateEngine.process("interview-failed", context);
+        sendEmailSync(to, "Kết quả phỏng vấn", content, false, true);
+    }
+
 }

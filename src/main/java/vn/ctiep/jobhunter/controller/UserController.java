@@ -56,14 +56,13 @@ public class UserController {
     }
 
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable("id") long id) throws IdInvalidException {
+    public ResponseEntity<Void> deleteUser(@PathVariable("id") long id) throws IdInvalidException {
         User currentUser = this.userService.fetchUserById(id);
         if (currentUser == null) {
             throw new IdInvalidException("User với id = " + id + " không tồn tại");
         }
         this.userService.handleDeleteUser(id);
-        return ResponseEntity.ok().body("Delete successful");
-        // return ResponseEntity.status(HttpStatus.OK).body("Delete successful");
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/users/{id}")

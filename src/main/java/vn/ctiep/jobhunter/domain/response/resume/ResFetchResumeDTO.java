@@ -35,6 +35,7 @@ public class ResFetchResumeDTO {
     private String companyName;
     private UserResume user;
     private JobResume job;
+    private boolean active;
 
     @Getter
     @Setter

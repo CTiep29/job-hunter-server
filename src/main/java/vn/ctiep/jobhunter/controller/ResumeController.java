@@ -111,6 +111,20 @@ public class ResumeController {
                     reqResume.getJob().getName(),
                     reqResume.getJob().getCompany().getName()
             );
+        } else if (resume.getStatus() == ResumeStateEnum.HIRED) {
+            this.emailService.sendHiredEmail(
+                    reqResume.getEmail(),
+                    reqResume.getUser().getName(),
+                    reqResume.getJob().getName(),
+                    reqResume.getJob().getCompany().getName()
+            );
+        } else if (resume.getStatus() == ResumeStateEnum.FAILED) {
+            this.emailService.sendInterviewFailedEmail(
+                    reqResume.getEmail(),
+                    reqResume.getUser().getName(),
+                    reqResume.getJob().getName(),
+                    reqResume.getJob().getCompany().getName()
+            );
         }
 
         // update a resume
@@ -135,14 +149,20 @@ public class ResumeController {
     }
 
     @DeleteMapping("/resumes/{id}")
-    @ApiMessage("Delete a resume by id")
-    public ResponseEntity<Void> delete(@PathVariable("id") long id) throws IdInvalidException {
-        Optional<Resume> reqResumeOptional = this.resumeService.fetchById(id);
-        if (reqResumeOptional.isEmpty()) {
-            throw new IdInvalidException("Resume với id =" + id + " không tồn tại");
+    @ApiMessage("Delete a resume")
+    public ResponseEntity<Void> deleteResume(@PathVariable long id) {
+        this.resumeService.handleDeleteResume(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/resumes/{id}/restore")
+    @ApiMessage("Restore a soft-deleted resume")
+    public ResponseEntity<Resume> restoreResume(@PathVariable long id) {
+        Resume restoredResume = this.resumeService.restoreResume(id);
+        if (restoredResume != null) {
+            return ResponseEntity.ok(restoredResume);
         }
-        this.resumeService.delete(id);
-        return ResponseEntity.ok().body(null);
+        return ResponseEntity.notFound().build();
     }
 
     @GetMapping("/resumes/{id}")

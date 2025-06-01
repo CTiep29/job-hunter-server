@@ -11,9 +11,11 @@ import org.springframework.stereotype.Repository;
 import vn.ctiep.jobhunter.domain.Job;
 import vn.ctiep.jobhunter.domain.Skill;
 import vn.ctiep.jobhunter.domain.Company;
+import vn.ctiep.jobhunter.util.constant.JobStatusEnum;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.Optional;
 
 @Repository
 public interface JobRepository extends JpaRepository<Job, Long>,
@@ -23,6 +25,8 @@ public interface JobRepository extends JpaRepository<Job, Long>,
         List<Job> findByActiveTrue();
         List<Job> findByEndDateBeforeAndActiveTrue(Instant now);
         List<Job> findByCompanyAndActiveTrue(Company company);
+
+        Optional<Job> findByIdAndActiveFalse(Long id);
 
         @Query("SELECT COUNT(j) FROM Job j WHERE j.company.id = :companyId")
         long countByCompanyId(@Param("companyId") Long companyId);
@@ -44,4 +48,6 @@ public interface JobRepository extends JpaRepository<Job, Long>,
                 "GROUP BY c.id, c.name " +
                 "ORDER BY activeJobs DESC", nativeQuery = true)
         List<Map<String, Object>> countActiveJobsByCompany();
+
+        long countByStatus(JobStatusEnum status);
 }

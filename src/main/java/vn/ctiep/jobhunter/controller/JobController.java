@@ -14,6 +14,7 @@ import vn.ctiep.jobhunter.domain.response.job.ResCreateJobDTO;
 import vn.ctiep.jobhunter.domain.response.job.ResUpdateJobDTO;
 import vn.ctiep.jobhunter.service.JobService;
 import vn.ctiep.jobhunter.util.annotation.ApiMessage;
+import vn.ctiep.jobhunter.util.constant.JobStatusEnum;
 import vn.ctiep.jobhunter.util.error.IdInvalidException;
 
 @RestController
@@ -83,4 +84,54 @@ public class JobController {
         return ResponseEntity.ok().body(this.jobService.fetchByCompanyId(companyId, spec, pageable));
     }
 
+    @PutMapping("/jobs/{id}/restore")
+    @ApiMessage("Restore a soft-deleted job")
+    public ResponseEntity<Job> restoreJob(@PathVariable long id) {
+        Job restoredJob = this.jobService.restoreJob(id);
+        if (restoredJob != null) {
+            return ResponseEntity.ok(restoredJob);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @PutMapping("/jobs/{id}/approve")
+    @ApiMessage("Approve a pending job")
+    public ResponseEntity<Job> approveJob(@PathVariable long id) throws IdInvalidException {
+        Optional<Job> currentJob = this.jobService.fetchJobById(id);
+        if (!currentJob.isPresent()) {
+            throw new IdInvalidException("Job not found");
+        }
+        
+        Job approvedJob = this.jobService.approveJob(id);
+        if (approvedJob != null) {
+            return ResponseEntity.ok(approvedJob);
+        }
+        return ResponseEntity.badRequest().build();
+    }
+
+    @PutMapping("/jobs/{id}/reject")
+    @ApiMessage("Reject a pending job")
+    public ResponseEntity<Job> rejectJob(@PathVariable long id) throws IdInvalidException {
+        Optional<Job> currentJob = this.jobService.fetchJobById(id);
+        if (!currentJob.isPresent()) {
+            throw new IdInvalidException("Job not found");
+        }
+        
+        Job rejectedJob = this.jobService.rejectJob(id);
+        if (rejectedJob != null) {
+            return ResponseEntity.ok(rejectedJob);
+        }
+        return ResponseEntity.badRequest().build();
+    }
+    @GetMapping("/jobs/count-pending")
+    @ApiMessage("Count pending jobs")
+    public ResponseEntity<?> countPendingJobs() {
+        try {
+            long count = jobService.countByStatus(JobStatusEnum.PENDING);
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error counting pending jobs: " + e.getMessage());
+        }
+    }
 }

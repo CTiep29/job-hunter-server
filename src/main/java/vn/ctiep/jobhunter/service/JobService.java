@@ -29,6 +29,7 @@ import vn.ctiep.jobhunter.util.SecurityUtil;
 import vn.ctiep.jobhunter.domain.Resume;
 import vn.ctiep.jobhunter.repository.ResumeRepository;
 import vn.ctiep.jobhunter.util.constant.ResumeStateEnum;
+import vn.ctiep.jobhunter.util.constant.JobStatusEnum;
 
 @Service
 public class JobService {
@@ -56,6 +57,10 @@ public class JobService {
     }
 
     public ResCreateJobDTO create(Job j) {
+        // Set default values
+        j.setActive(false);
+        j.setStatus(JobStatusEnum.PENDING);
+
         // gan cong ty
         Optional<ResLoginDTO.UserInsideToken> optionalUser = SecurityUtil.getCurrentUserInsideToken();
         if (optionalUser.isPresent()){
@@ -92,6 +97,7 @@ public class JobService {
         dto.setStartDate(currentJob.getStartDate());
         dto.setEndDate(currentJob.getEndDate());
         dto.setActive(currentJob.isActive());
+        dto.setStatus(currentJob.getStatus());
         dto.setCreatedAt(currentJob.getCreatedAt());
         dto.setCreatedBy(currentJob.getCreatedBy());
 
@@ -163,7 +169,7 @@ public class JobService {
 
         return dto;
     }
-
+    @Transactional
     public void handleDeleteJob(long id) {
         Optional<Job> jobOptional = this.jobRepository.findById(id);
         if (jobOptional.isPresent()) {
@@ -182,20 +188,42 @@ public class JobService {
         }
     }
 
+    @Transactional
+    public Job restoreJob(long id) {
+        Optional<Job> jobOptional = this.jobRepository.findByIdAndActiveFalse(id);
+        if (jobOptional.isPresent()) {
+            Job job = jobOptional.get();
+            
+            // 1. Khôi phục Job
+            job.setActive(true);
+            job = this.jobRepository.save(job);
+            
+            // 2. Khôi phục tất cả Resume liên quan
+            List<Resume> relatedResumes = resumeRepository.findByJobId(job.getId());
+            for (Resume resume : relatedResumes) {
+                resume.setActive(true);
+                resumeRepository.save(resume);
+            }
+            
+            return job;
+        }
+        return null;
+    }
+
     public ResultPaginationDTO fetchAll(Specification<Job> spec, Pageable pageable) {
 
-        Page<Job> pageUser = this.jobRepository.findAll(spec, pageable);
+        Page<Job> pageJob = this.jobRepository.findAll(spec, pageable);
 
         ResultPaginationDTO rs = new ResultPaginationDTO();
         ResultPaginationDTO.Meta mt = new ResultPaginationDTO.Meta();
 
         mt.setPage(pageable.getPageNumber() + 1);
         mt.setPageSize(pageable.getPageSize());
-        mt.setPages(pageUser.getTotalPages());
-        mt.setTotal(pageUser.getTotalElements());
+        mt.setPages(pageJob.getTotalPages());
+        mt.setTotal(pageJob.getTotalElements());
 
         rs.setMeta(mt);
-        rs.setResult(pageUser.getContent());
+        rs.setResult(pageJob.getContent());
 
         return rs;
     }
@@ -230,11 +258,56 @@ public class JobService {
         List<Job> expiredJobs = jobRepository.findByEndDateBeforeAndActiveTrue(now);
 
         for (Job job : expiredJobs) {
+            // 1. Cập nhật trạng thái job
             job.setActive(false);
+            jobRepository.save(job);
+
+            // 2. Cập nhật các resume liên quan
+            List<Resume> relatedResumes = resumeRepository.findByJobIdAndActiveTrue(job.getId());
+            for (Resume resume : relatedResumes) {
+                // Chỉ cập nhật các resume đang ở trạng thái chờ xử lý
+                if (resume.getStatus() == ResumeStateEnum.PENDING) {
+                    resume.setActive(false);
+                    resumeRepository.save(resume);
+                }
+            }
         }
 
-        jobRepository.saveAll(expiredJobs);
         System.out.println("✅ Cronjob đã cập nhật " + expiredJobs.size() + " job hết hạn.");
     }
 
+    @Transactional
+    public Job approveJob(long id) {
+        Optional<Job> jobOptional = this.jobRepository.findById(id);
+        if (jobOptional.isPresent()) {
+            Job job = jobOptional.get();
+            
+            // Chỉ duyệt những job đang ở trạng thái PENDING
+            if (job.getStatus() == JobStatusEnum.PENDING) {
+                job.setStatus(JobStatusEnum.APPROVED);
+                job.setActive(true);
+                return this.jobRepository.save(job);
+            }
+        }
+        return null;
+    }
+
+    @Transactional
+    public Job rejectJob(long id) {
+        Optional<Job> jobOptional = this.jobRepository.findById(id);
+        if (jobOptional.isPresent()) {
+            Job job = jobOptional.get();
+            
+            // Chỉ từ chối những job đang ở trạng thái PENDING
+            if (job.getStatus() == JobStatusEnum.PENDING) {
+                job.setStatus(JobStatusEnum.REJECTED);
+                job.setActive(false);
+                return this.jobRepository.save(job);
+            }
+        }
+        return null;
+    }
+    public long countByStatus(JobStatusEnum status) {
+        return jobRepository.countByStatus(status);
+    }
 }

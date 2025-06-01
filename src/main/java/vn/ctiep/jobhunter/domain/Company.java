@@ -19,6 +19,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 import vn.ctiep.jobhunter.util.SecurityUtil;
+import vn.ctiep.jobhunter.util.annotation.OnUpdate;
 
 @Table(name = "companies")
 @Entity
@@ -36,6 +37,13 @@ public class Company {
     private String description;
 
     private String address;
+
+    @Column(columnDefinition = "MEDIUMTEXT")
+    private String url;
+
+    @NotBlank(message = "Mã số thuế không được để trống", groups = {OnUpdate.class})
+    @Column(name = "tax_code", unique = true)
+    private String taxCode;
 
     private String logo;
 

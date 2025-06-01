@@ -27,6 +27,7 @@ import lombok.Getter;
 import lombok.Setter;
 import vn.ctiep.jobhunter.util.SecurityUtil;
 import vn.ctiep.jobhunter.util.constant.LevelEnum;
+import vn.ctiep.jobhunter.util.constant.JobStatusEnum;
 
 @Entity
 @Table(name = "jobs")
@@ -51,6 +52,10 @@ public class Job {
     private Instant startDate;
     private Instant endDate;
     private boolean active;
+    
+    @Enumerated(EnumType.STRING)
+    private JobStatusEnum status = JobStatusEnum.PENDING;
+
     private Instant createdAt;
     private Instant updatedAt;
     private String createdBy;
@@ -76,6 +81,7 @@ public class Job {
                 : "";
 
         this.createdAt = Instant.now();
+        this.active = false; // Set active to false by default
     }
 
     @PreUpdate
@@ -86,5 +92,4 @@ public class Job {
 
         this.updatedAt = Instant.now();
     }
-
 }

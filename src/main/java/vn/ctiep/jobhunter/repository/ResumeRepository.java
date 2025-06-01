@@ -19,6 +19,8 @@ public interface ResumeRepository extends JpaRepository<Resume, Long>, JpaSpecif
     long countByJobIdAndStatus(Long jobId, ResumeStateEnum status);
     boolean existsByUserIdAndJobId(Long userId, Long jobId);
     List<Resume> findByJobIdAndActiveTrue(Long jobId);
+    List<Resume> findByJobId(Long jobId);
+    Optional<Resume> findByIdAndActiveFalse(Long id);
     
     @Query("SELECT r.status as status, COUNT(r) as count " +
         "FROM Resume r " +

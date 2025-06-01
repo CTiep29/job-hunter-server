@@ -6,6 +6,7 @@ import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import vn.ctiep.jobhunter.util.constant.LevelEnum;
+import vn.ctiep.jobhunter.util.constant.JobStatusEnum;
 
 @Getter
 @Setter
@@ -24,6 +25,8 @@ public class ResCreateJobDTO {
     private Instant startDate;
     private Instant endDate;
     private boolean isActive;
+
+    private JobStatusEnum status;
 
     private List<String> skills;
 

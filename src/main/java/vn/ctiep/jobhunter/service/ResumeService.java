@@ -7,6 +7,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.repository.query.Param;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.turkraft.springfilter.builder.FilterBuilder;
 import com.turkraft.springfilter.converter.FilterSpecification;
@@ -29,6 +30,7 @@ import vn.ctiep.jobhunter.util.SecurityUtil;
 import vn.ctiep.jobhunter.util.constant.ResumeStateEnum;
 import vn.ctiep.jobhunter.util.error.IdInvalidException;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -127,21 +129,17 @@ public class ResumeService {
         res.setCreatedBy(resume.getCreatedBy());
         res.setUpdatedAt(resume.getUpdatedAt());
         res.setUpdatedBy(resume.getUpdatedBy());
+        res.setActive(resume.isActive());
         if (resume.getJob() != null) {
             res.setCompanyName(resume.getJob().getCompany().getName());
         }
         res.setUser(new ResFetchResumeDTO.UserResume(resume.getUser().getId(), resume.getUser().getName()));
         res.setJob(new ResFetchResumeDTO.JobResume(resume.getJob().getId(), resume.getJob().getName()));
-
         return res;
     }
 
     public ResultPaginationDTO fetchAllResume(Specification<Resume> spec, Pageable pageable) {
-        // Thêm điều kiện chỉ lấy các resume active
-        Specification<Resume> activeSpec = (root, query, cb) -> cb.equal(root.get("active"), true);
-        Specification<Resume> finalSpec = Specification.where(activeSpec).and(spec);
-        
-        Page<Resume> pageUser = this.resumeRepository.findAll(finalSpec, pageable);
+        Page<Resume> pageUser = this.resumeRepository.findAll(spec, pageable);
         ResultPaginationDTO rs = new ResultPaginationDTO();
         ResultPaginationDTO.Meta mt = new ResultPaginationDTO.Meta();
 
@@ -202,6 +200,51 @@ public class ResumeService {
                 System.out.println("[Cronjob] Vô hiệu hóa job ID: " + job.getId() + " do đã tuyển đủ: " + hiredCount + "/" + job.getQuantity());
             }
         }
+    }
+
+    @Transactional
+    public void handleDeleteResume(long id) {
+        Optional<Resume> resumeOptional = this.resumeRepository.findById(id);
+        if (resumeOptional.isPresent()) {
+            Resume resume = resumeOptional.get();
+            
+            // Chỉ cho phép xóa mềm nếu hồ sơ đang ở trạng thái PENDING
+            if (resume.getStatus() == ResumeStateEnum.PENDING) {
+                resume.setActive(false);
+                this.resumeRepository.save(resume);
+            } else {
+                throw new IllegalStateException("Chỉ có thể xóa hồ sơ đang ở trạng thái chờ xử lý");
+            }
+        }
+    }
+
+    @Transactional
+    public Resume restoreResume(long id) {
+        Optional<Resume> resumeOptional = this.resumeRepository.findByIdAndActiveFalse(id);
+        if (resumeOptional.isEmpty()) {
+            throw new IllegalStateException("Không tìm thấy hồ sơ cần khôi phục");
+        }
+        
+        Resume resume = resumeOptional.get();
+        
+        // Kiểm tra xem job có còn active không
+        if (!resume.getJob().isActive()) {
+            throw new IllegalStateException("Không thể khôi phục hồ sơ vì công việc đã bị đóng");
+        }
+        
+        // Kiểm tra xem job có còn trong thời hạn không
+        if (resume.getJob().getEndDate().isBefore(Instant.now())) {
+            throw new IllegalStateException("Không thể khôi phục hồ sơ vì công việc đã hết hạn");
+        }
+        
+        // Kiểm tra xem job có còn slot trống không
+        long hiredCount = resumeRepository.countByJobIdAndStatus(resume.getJob().getId(), ResumeStateEnum.HIRED);
+        if (hiredCount >= resume.getJob().getQuantity()) {
+            throw new IllegalStateException("Không thể khôi phục hồ sơ vì công việc đã tuyển đủ số lượng");
+        }
+        
+        resume.setActive(true);
+        return this.resumeRepository.save(resume);
     }
 
 }
