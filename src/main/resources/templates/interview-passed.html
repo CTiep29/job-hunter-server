@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Kết quả phỏng vấn</title>
+</head>
+<body>
+<p>Chào <b th:text="${name}"></b>,</p>
+<p>Chúc mừng đã vượt qua vòng phỏng vấn vào vị trí <b th:text="${jobTitle}"></b> tại công ty <b th:text="${companyName}"></b>!</p>
+<p>Đây là một cơ hội tuyệt vời để bạn phát triển sự nghiệp và đóng góp cho công ty.</p>
+<p>Hãy xác nhận đồng ý nhận việc trên website JobHunter. Sau đó, bộ phận nhân sự sẽ liên hệ với bạn trong thời gian sớm nhất để hướng dẫn các bước tiếp theo.</p>
+<p>
+    <a th:href="${confirmationUrl}" style="background: #1e90ff; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">Xác nhận nhận công việc</a>
+</p>
+<p>Trân trọng,<br/><b th:text="${companyName}"></b></p>
+</body>
+</html>

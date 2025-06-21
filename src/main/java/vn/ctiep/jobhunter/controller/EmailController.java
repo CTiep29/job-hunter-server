@@ -26,7 +26,7 @@ public class EmailController {
 
     @GetMapping("/email")
     @ApiMessage("Send simple email")
-    @Scheduled(cron = "0 46 23 * * *") // gửi lúc 23h hàng ngày
+    @Scheduled(cron = "0 0 9 * * *") // gửi lúc 9h sáng hàng ngày
     @Transactional
     public ResponseEntity<?> sendSimpleEmail() {
         int sentCount = this.subscriberService.sendSubscribersEmailJobs();

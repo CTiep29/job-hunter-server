@@ -57,7 +57,7 @@ public class JobService {
     }
 
     public ResCreateJobDTO create(Job j) {
-        // Set default values
+        // trang thai ban dau
         j.setActive(false);
         j.setStatus(JobStatusEnum.PENDING);
 
@@ -76,6 +76,7 @@ public class JobService {
         }
         // check skills
         if (j.getSkills() != null) {
+            // Lay danh sach skill id
             List<Long> reqSkills = j.getSkills()
                     .stream().map(x -> x.getId())
                     .collect(Collectors.toList());
@@ -102,6 +103,7 @@ public class JobService {
         dto.setCreatedBy(currentJob.getCreatedBy());
 
         if (currentJob.getSkills() != null) {
+            // Lay danh sach skill name
             List<String> skills = currentJob.getSkills()
                     .stream().map(item -> item.getName())
                     .collect(Collectors.toList());

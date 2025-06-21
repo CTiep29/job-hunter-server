@@ -97,51 +97,61 @@ public class SubscriberService {
         res.setSalary(job.getSalary());
         res.setCompany(new ResEmailJob.CompanyEmail(job.getCompany().getName()));
         List<Skill> skills = job.getSkills();
+        // Chuyển đổi danh sách kỹ năng
         List<ResEmailJob.SkillEmail> s = skills.stream().map(skill -> new ResEmailJob.SkillEmail(skill.getName()))
                 .collect(Collectors.toList());
         res.setSkills(s);
         return res;
     }
 
+    //Lay danh sach job chua gui
     @SuppressWarnings("unchecked")
     private List<Job> filterNewJobs(String email, List<Job> jobs) {
+        // Tao key redis dua vao email
         String redisKey = "sent_jobs:" + email;
-
+        // Lay danh sach job da gui
         Set<Long> cache = (Set<Long>) redisTemplate.opsForValue().get(redisKey);
+        // Neu cache null thi tao moi
         Set<Long> sentJobIds = (cache != null) ? cache : new HashSet<>();
-
+        // Lay danh sach job chua gui
         return jobs.stream()
                 .filter(job -> !sentJobIds.contains(job.getId()))
                 .toList();
     }
 
+    //Danh dau job da gui
     @SuppressWarnings("unchecked")
         private void markJobsAsSent(String email, List<Job> jobs) {
             String redisKey = "sent_jobs:" + email;
-
+            // Lay danh sach job da gui
             Set<Long> sentJobIds = (Set<Long>) redisTemplate.opsForValue().get(redisKey);
+            // Neu cache null thi tao moi
             if (sentJobIds == null) {
                 sentJobIds = new HashSet<>();
             }
-
+            // Them job vao moi vao danh sach
             for (Job job : jobs) {
                 sentJobIds.add(job.getId());
             }
-
+            // Luu vao redis thoi han 30 ngay
             redisTemplate.opsForValue().set(redisKey, sentJobIds, Duration.ofDays(30));
         }
 
     public int sendSubscribersEmailJobs() {
         int sent = 0;
+        // Lấy danh sách tất cả subscribers
         List<Subscriber> listSubs = this.subscriberRepository.findAll();
         for (Subscriber sub : listSubs) {
+            // Lấy danh sách kỹ năng của subscriber
             List<Skill> listSkills = sub.getSkills();
             if (listSkills == null || listSkills.isEmpty()) continue;
-
+            // Tìm các công việc phù hợp với kỹ năng và đang active
             List<Job> matchedJobs = this.jobRepository.findBySkillsInAndActiveTrue(listSkills);
+            // Lọc ra các công việc mới chưa gửi
             List<Job> newJobs = filterNewJobs(sub.getEmail(), matchedJobs);
 
             if (!newJobs.isEmpty()) {
+                // Chuyển đổi thông tin công việc sang định dạng email
                 List<ResEmailJob> arr = newJobs.stream()
                         .map(this::convertJobToSendEmail)
                         .collect(Collectors.toList());
@@ -152,7 +162,7 @@ public class SubscriberService {
                         "job",
                         sub.getName(),
                         arr);
-
+                // Đánh dấu các công việc đã gửi
                 markJobsAsSent(sub.getEmail(), newJobs);
                 sent++;
             }

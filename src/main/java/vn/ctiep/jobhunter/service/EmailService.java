@@ -83,6 +83,16 @@ public class EmailService {
         String content = templateEngine.process("interview-invitation", context);
         sendEmailSync(to, "Thư mời phỏng vấn", content, false, true);
     }
+    public void sendInterviewPassedEmail(String to, String name, String jobTitle, String companyName, String confirmationUrl) {
+        Context context = new Context();
+        context.setVariable("name", name);
+        context.setVariable("jobTitle", jobTitle);
+        context.setVariable("companyName", companyName);
+        context.setVariable("confirmationUrl", confirmationUrl);
+
+        String content = templateEngine.process("interview-passed", context);
+        sendEmailSync(to, "Kết quả phỏng vấn", content, false, true);
+    }
 
     public void sendRejectionEmail(String to, String name, String jobTitle, String companyName) {
         Context context = new Context();

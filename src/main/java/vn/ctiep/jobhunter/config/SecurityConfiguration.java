@@ -72,6 +72,7 @@ public class SecurityConfiguration {
                                 .requestMatchers(HttpMethod.GET, "/api/v1/jobs/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/skills/**").permitAll()
                                 .requestMatchers("/", "/login/**", "/oauth2/**").permitAll()
+                                .requestMatchers("/ws/**").permitAll()
                                 .anyRequest().authenticated())
                 .headers(headers -> headers.addHeaderWriter((request, response) -> {
                     response.setHeader("Cross-Origin-Opener-Policy", "same-origin");

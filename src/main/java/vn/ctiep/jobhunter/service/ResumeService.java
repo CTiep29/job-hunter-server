@@ -61,7 +61,7 @@ public class ResumeService {
     }
 
     public boolean checkResumeExistByUserAndJob(Resume resume) throws IdInvalidException {
-        // check user by id
+        // kiem tra user
         if (resume.getUser() == null) {
             return false;
         }
@@ -69,7 +69,7 @@ public class ResumeService {
         if (userOptional.isEmpty()) {
             return false;
         }
-        // check job by id
+        // kiem tra job
         if (resume.getJob() == null) {
             return false;
         }
@@ -77,13 +77,12 @@ public class ResumeService {
         if (jobOptional.isEmpty()) {
             return false;
         }
-        // Check if the user has already applied for this job
+        // Kiem tra neu user da apply job nay
         boolean alreadyApplied = this.resumeRepository.existsByUserIdAndJobId(
                 resume.getUser().getId(),
                 resume.getJob().getId()
         );
         if (alreadyApplied) {
-            // Nếu muốn, có thể throw luôn 1 custom exception
             throw new IdInvalidException("Ứng viên đã ứng tuyển công việc này rồi.");
         }
         return true;
